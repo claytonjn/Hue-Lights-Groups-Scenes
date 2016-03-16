@@ -18,17 +18,19 @@ metadata {
 		capability "Polling"
 		capability "Refresh"
 		capability "Sensor"
-		capability "Test Capability" //Hope to replace with Transistion Time
+		//capability "Test Capability" //Hope to replace with Transistion Time
 
 		command "setAdjustedColor"
-        command "setTT"
+		command "reset"        
+        command "refresh"
+		command "setColorTemperature"
+        command "setTransitionTime"
         command "getGroupID"
-        command "setColorTemperature"
 		command "log", ["string","string"]        
         
-		attribute "groupID", "STRING"
-        attribute "transTime", "NUMBER"
+        attribute "transitionTime", "NUMBER"
         attribute "colorTemperature", "NUMBER"
+		attribute "groupID", "STRING"
 	}
 
 	simulator {
@@ -67,11 +69,11 @@ metadata {
 			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
 		
-		controlTile("transitiontime", "device.transTime", "slider", inactiveLabel: false,  width: 5, height: 1, range:"(0..4)") { 
-        		state "setTT", action:"setTT", backgroundColor:"#d04e00"
+		controlTile("transitionTimeSliderControl", "device.transitionTime", "slider", inactiveLabel: false,  width: 5, height: 1, range:"(0..4)") { 
+        		state "setTransitionTime", action:"setTransitionTime", backgroundColor:"#d04e00"
 		}
-		valueTile("valueTT", "device.transTime", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-			state "transTime", label: 'Transition    Time: ${currentValue}'
+		valueTile("transTime", "device.transitionTime", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
+			state "transitionTime", label: 'Transition    Time: ${currentValue}'
         	}
 
 		valueTile("groupID", "device.groupID", inactiveLabel: false, decoration: "flat") {
@@ -84,7 +86,7 @@ metadata {
 
 	}
 	main(["rich-control"])
-	details(["rich-control", "colorTempSliderControl", "colorTemp", "transitiontime", "valueTT", "refresh", "reset", "groupID", "getGroupID"])
+	details(["rich-control", "colorTempSliderControl", "colorTemp", "transitionTimeSliderControl", "transTime", "refresh", "reset", "groupID", "getGroupID"])
 
 }
 
@@ -108,168 +110,92 @@ def parse(description) {
 }
 
 // handle commands
-void setTT(transitiontime) {
+void setTransitionTime(transitiontime) {
+	log.debug "Executing 'setTransitionTime': transition time is now ${transitiontime}."
+	sendEvent(name: "transitionTime", value: transitiontime, isStateChange: true)
+}
 
-	log.debug "Executing 'setTT': transition time is now ${transitiontime}."
-	sendEvent(name: "transTime", value: transitiontime, isStateChange: true)
+void on(transitionTime = device.currentValue("transitionTime")) {
+	if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
     
-}
-
-void on() 
-{
-	def level = device.currentValue("level")
-    if(level == null) {
-    	level = 100
-    }
+    def level = device.currentValue("level")
+    if(level == null) { level = 100 }
 	
-    def transitionTime = device.currentValue("transTime")
-    if(transitionTime == null) {
-    	transitionTime = parent.getSelectedTransition()
-    }
 	parent.groupOn(this, transitionTime, level)
-	sendEvent(name: "switch", value: "on")
-	sendEvent(name: "transTime", value: transitionTime, isStateChange: true)
+	sendEvent(name: "switch", value: "on", isStateChange: true)
+	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
 
-void on(transitiontime)
-{
-	def level = device.currentValue("level")
-    if(level == null) {
-    	level = 100
-    }
-	parent.groupOn(this, transitiontime, level)
-	sendEvent(name: "switch", value: "on")
-	sendEvent(name: "transTime", value: transitiontime, isStateChange: true)
+void off(transitionTime = device.currentValue("transitionTime")) {
+    if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
+	
+    parent.groupOff(this, transitionTime)
+	sendEvent(name: "switch", value: "off", isStateChange: true)
+	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
 
-void off() 
-{
-	def transitionTime = device.currentValue("transTime")
-    if(transitionTime == null) {
-    	transitionTime = parent.getSelectedTransition()
-    }
-	parent.groupOff(this, transitionTime)
-	sendEvent(name: "switch", value: "off")
-	sendEvent(name: "transTime", value: transitionTime, isStateChange: true)
+void nextLevel(transitionTime = device.currentValue("transitionTime")) {
+	if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
+    
+    def level = device.latestValue("level") as Integer ?: 0
+	if (level < 100) { level = Math.min(25 * (Math.round(level / 25) + 1), 100) as Integer }
+	else { level = 25 }
+	setLevel(level, transitionTime)
 }
 
-void off(transitiontime)
-{
-	parent.groupOff(this, transitiontime)
-	sendEvent(name: "switch", value: "off")
-	sendEvent(name: "transTime", value: transitiontime, isStateChange: true)
-}
-
-void nextLevel() {
-	def level = device.latestValue("level") as Integer ?: 0
-	if (level < 100) {
-		level = Math.min(25 * (Math.round(level / 25) + 1), 100) as Integer
-	}
-	else {
-		level = 25
-	}
-	setLevel(level)
-}
-
-void setLevel(percent) 
-{
-	def transitionTime = device.currentValue("transTime")
-    if(transitionTime == null) {
-    	transitionTime = parent.getSelectedTransition()
-    }
-	log.debug "Executing 'setLevel'"
+void setLevel(percent, transitionTime = device.currentValue("transitionTime")) {
+    if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
+	
+    log.debug "Executing 'setLevel'"
 	parent.setGroupLevel(this, percent, transitionTime)
-	sendEvent(name: "level", value: percent, descriptionText: "Level has changed to ${percent}%")
-	sendEvent(name: "transTime", value: transitionTime, isStateChange: true)
-
-}
-void setLevel(percent, transitiontime) 
-{
-	log.debug "Executing 'setLevel'"
-	parent.setGroupLevel(this, percent, transitiontime)
-	sendEvent(name: "level", value: percent, descriptionText: "Level has changed to ${percent}%")
-	sendEvent(name: "transTime", value: transitiontime, isStateChange: true)
+	sendEvent(name: "switch", value: "on", isStateChange: true)
+    sendEvent(name: "level", value: percent, descriptionText: "Level has changed to ${percent}%", isStateChange: true)
+	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
 
-void setSaturation(percent) 
-{
-	def transitionTime = device.currentValue("transTime")
-    if(transitionTime == null) {
-    	transitionTime = parent.getSelectedTransition()
-    }
-	log.debug "Executing 'setSaturation'"
+void setSaturation(percent, transitionTime = device.currentValue("transitionTime")) {
+    if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
+	
+    log.debug "Executing 'setSaturation'"
 	parent.setGroupSaturation(this, percent, transitionTime)
-	sendEvent(name: "saturation", value: percent, displayed: false)
-	sendEvent(name: "transTime", value: transitionTime, isStateChange: true)
+	sendEvent(name: "saturation", value: percent, displayed: false, isStateChange: true)
+	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
 
-void setSaturation(percent, transitiontime) 
-{
-	log.debug "Executing 'setSaturation'"
-	parent.setGroupSaturation(this, percent, transitiontime)
-	sendEvent(name: "saturation", value: percent, displayed: false)
-	sendEvent(name: "transTime", value: transitiontime, isStateChange: true)
-}
-
-void setHue(percent) 
-{
-	def transitionTime = device.currentValue("transTime")
-    if(transitionTime == null) {
-    	transitionTime = parent.getSelectedTransition()
-    }
-	log.debug "Executing 'setHue'"
+void setHue(percent, transitionTime = device.currentValue("transitionTime")) {
+    if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
+	
+    log.debug "Executing 'setHue'"
 	parent.setGroupHue(this, percent, transitionTime)
-	sendEvent(name: "hue", value: percent, displayed: false)
-	sendEvent(name: "transTime", value: transitionTime, isStateChange: true)
-}
-
-void setHue(percent, transitiontime) 
-{
-	log.debug "Executing 'setHue'"
-	parent.setGroupHue(this, percent, transitiontime)
-	sendEvent(name: "hue", value: percent, displayed: false)
-	sendEvent(name: "transTime", value: transitiontime, isStateChange: true)
+	sendEvent(name: "hue", value: percent, displayed: false, isStateChange: true)
+	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
 
 void setColor(value) {
-	// log.debug "setColor: ${value}"
-
+	log.debug "setColor: ${value}, $this"
+	def isOff = false
 	
-	if(value.transitiontime)
-	{
-		sendEvent(name: "transTime", value: value.transitiontime, isStateChange: true)
+	if(value.transitiontime) { sendEvent(name: "transitionTime", value: value.transitiontime, isStateChange: true) }
+	else {
+		def transitionTime = device.currentValue("transitionTime")
+	    if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
+		value << [transitionTime: transitionTime]
 	}
-	else
-	{
-		def transitionTime = device.currentValue("transTime")
-	    if(transitionTime == null) {
-    		transitionTime = parent.getSelectedTransition()
-    	}
-		value << [transitiontime: transitionTime]
-	}
-	if (value.hex) 
-	{
-		sendEvent(name: "color", value: value.hex, isStateChange: true)
-        
-	} 
-	else if (value.hue && value.saturation) 
-	{
-		def hex = colorUtil.hslToHex(value.hue, value.saturation)
-		sendEvent(name: "color", value: hex, isStateChange: true)
-	}
-    if (value.hue && value.saturation) 
-	{
-		sendEvent(name: "saturation", value:  value.saturation)
-        sendEvent(name: "hue", value:  value.hue, isStateChange: true)
-	}
-	if (value.level) 
-	{
-		sendEvent(name: "level", value: value.level, descriptionText: "Level has changed to ${value.level}%", isStateChange: true)
-	}
-	if (value.switch) 
+	if (value.hex) { sendEvent(name: "color", value: value.hex, isStateChange: true) } 
+	if (value.hue) { sendEvent(name: "hue", value: value.hue, displayed: false, isStateChange: true) }
+	if (value.saturation) { sendEvent(name: "saturation", value: value.saturation, displayed: false, isStateChange: true) }
+	if (value.level) { sendEvent(name: "level", value: value.level, descriptionText: "Level has changed to ${value.level}%", isStateChange: true) }
+	else {
+    	// sendEvent(name: "level", value: 1)
+        value.level = 1
+        value.transitionTime = 0
+        isOff = true
+    }
 	
 	sendEvent(name: "switch", value: value.switch, isStateChange: true)
+    
 	parent.setGroupColor(this, value)
+    if (isOff) { parent.off(this, 0) }
 }
 
 void reset() {
@@ -290,43 +216,18 @@ void setAdjustedColor(value) {
     }
 }
 
-void setColorTemperature(colorTkelvin) {
-    if(colorTkelvin == null) {
-    	colorTkelvin = 2400
-    }
-    
-    def transitionTime = device.currentValue("transTime")
-    if(transitionTime == null) {
-    	transitionTime = parent.getSelectedTransition()
-    }
-    
-    def colorTmireks = parent.kelvinToMireks(colorTkelvin)
+void setColorTemperature(colorTkelvin, transitionTime = device.currentValue("transitionTime")) {
+    if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
     
 	log.debug "Executing 'setColorTemperature'"
-	parent.setGroupColorTemperature(this, colorTmireks, transitionTime)
+	parent.setGroupColorTemperature(this, colorTkelvin, transitionTime)
 	sendEvent(name: "colorTemperature", value: colorTkelvin, isStateChange: true)
-    sendEvent(name: "switch", value: "on", isStateChange: true)
-
-}
-
-void setColorTemperature(colorTkelvin, transitiontime) {
-    if(colorTkelvin == null) {
-    	colorTkelvin = 2400
-    }
-        
-    def colorTmireks = parent.kelvinToMireks(colorTkelvin)
-    
-	log.debug "Executing 'setColorTemperature'"
-	parent.setGroupColorTemperature(this, colorTmireks, transitiontime)
-	sendEvent(name: "colorTemperature", value: colorTkelvin, isStateChange: true)
-    sendEvent(name: "switch", value: "on", isStateChange: true)
-
+    sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
 
 void refresh() {
 	log.debug "Executing 'refresh'"
-	parent.poll()
-    
+	parent.poll()    
 }
 
 def adjustOutgoingHue(percent) {
@@ -354,7 +255,6 @@ void getGroupID() {
     log.debug "Retrieved groupID: ${groupIDfromP}."
    
     sendEvent(name: "groupID", value: "${groupIDfromP}", isStateChange: true)
-
 }
 
 def log(message, level = "trace") {
