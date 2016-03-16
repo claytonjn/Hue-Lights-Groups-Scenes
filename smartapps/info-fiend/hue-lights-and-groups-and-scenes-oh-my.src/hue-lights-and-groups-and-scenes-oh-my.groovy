@@ -784,11 +784,16 @@ def parse(childDevice, description) {
 	def parsedEvent = parseEventMessage(description)
 
 	if (parsedEvent.headers && parsedEvent.body) {
-		def headerString = new String(parsedEvent.headers.decodeBase64())
-		def bodyString = new String(parsedEvent.body.decodeBase64())
-		log.debug "parse() - ${bodyString}"
-		def body = new groovy.json.JsonSlurper().parseText(bodyString)
-		log.debug "BODY - $body"
+		def headerString = parsedEvent.headers.toString()
+        def bodyString = parsedEvent.body.toString()
+		if (headerString?.contains("json")) {
+			def body
+            try {
+                body = new groovy.json.JsonSlurper().parseText(bodyString)
+            } catch (all) {
+                log.warn "Parsing Body failed - trying again..."
+                poll()
+            }
 		if (body instanceof java.util.HashMap)
 		{ //poll response
 			def bulbs = getChildDevices()
@@ -906,13 +911,13 @@ def parse(childDevice, description) {
 			}
 
 			hsl.each { childDeviceNetworkId, hueSat ->
-				if (hueSat.hue && hueSat.saturation) {
-					def hex = colorUtil.hslToHex(hueSat.hue, hueSat.saturation)
-					log.debug "sending ${hueSat} for ${childDeviceNetworkId} as ${hex}"
-					sendEvent(hsl.childDeviceNetworkId, [name: "color", value: hex])
+                    if (hueSat.hue && hueSat.saturation) {
+                        def hex = colorUtil.hslToHex(hueSat.hue, hueSat.saturation)
+                        log.debug "sending ${hueSat} for ${childDeviceNetworkId} as ${hex}"
+                        sendEvent(hsl.childDeviceNetworkId, [name: "color", value: hex])
+					}
 				}
 			}
-
 		}
 	} else {
 		log.debug "parse - got something other than headers,body..."
