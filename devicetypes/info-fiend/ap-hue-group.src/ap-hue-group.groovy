@@ -110,9 +110,9 @@ def parse(description) {
 }
 
 // handle commands
-void setTransitionTime(transitionTime) {
-	log.debug "Executing 'setTransitionTime': transition time is now ${transitionTime}."
-	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
+void setTransitionTime(transitiontime) {
+	log.debug "Executing 'setTransitionTime': transition time is now ${transitiontime}."
+	sendEvent(name: "transitionTime", value: transitiontime, isStateChange: true)
 }
 
 void on(transitionTime = device.currentValue("transitionTime")) {
@@ -121,7 +121,7 @@ void on(transitionTime = device.currentValue("transitionTime")) {
     def level = device.currentValue("level")
     if(level == null) { level = 100 }
 	
-	parent.groupOn(this, transitionTime, level)
+	parent.on(this, transitionTime, level, "groups")
 	sendEvent(name: "switch", value: "on", isStateChange: true)
 	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
@@ -129,7 +129,7 @@ void on(transitionTime = device.currentValue("transitionTime")) {
 void off(transitionTime = device.currentValue("transitionTime")) {
     if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
 	
-    parent.groupOff(this, transitionTime)
+    parent.off(this, transitionTime, "groups")
 	sendEvent(name: "switch", value: "off", isStateChange: true)
 	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
@@ -147,7 +147,7 @@ void setLevel(percent, transitionTime = device.currentValue("transitionTime")) {
     if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
 	
     log.debug "Executing 'setLevel'"
-	parent.setGroupLevel(this, percent, transitionTime)
+	parent.setLevel(this, percent, transitionTime, "groups")
 	sendEvent(name: "switch", value: "on", isStateChange: true)
     sendEvent(name: "level", value: percent, descriptionText: "Level has changed to ${percent}%", isStateChange: true)
 	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
@@ -157,7 +157,7 @@ void setSaturation(percent, transitionTime = device.currentValue("transitionTime
     if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
 	
     log.debug "Executing 'setSaturation'"
-	parent.setGroupSaturation(this, percent, transitionTime)
+	parent.setSaturation(this, percent, transitionTime, "groups")
 	sendEvent(name: "saturation", value: percent, displayed: false, isStateChange: true)
 	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
@@ -166,7 +166,7 @@ void setHue(percent, transitionTime = device.currentValue("transitionTime")) {
     if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
 	
     log.debug "Executing 'setHue'"
-	parent.setGroupHue(this, percent, transitionTime)
+	parent.setHue(this, percent, transitionTime, "groups")
 	sendEvent(name: "hue", value: percent, displayed: false, isStateChange: true)
 	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
@@ -194,8 +194,8 @@ void setColor(value) {
 	
 	sendEvent(name: "switch", value: value.switch, isStateChange: true)
     
-	parent.setGroupColor(this, value)
-    if (isOff) { parent.off(this, 0) }
+	parent.setColor(this, value, "groups")
+    if (isOff) { parent.off(this, 0, "groups") }
 }
 
 void reset() {
@@ -220,7 +220,7 @@ void setColorTemperature(colorTkelvin, transitionTime = device.currentValue("tra
     if(transitionTime == null) { transitionTime = parent.getSelectedTransition() }
     
 	log.debug "Executing 'setColorTemperature'"
-	parent.setGroupColorTemperature(this, colorTkelvin, transitionTime)
+	parent.setColorTemperature(this, colorTkelvin, transitionTime, "groups")
 	sendEvent(name: "colorTemperature", value: colorTkelvin, isStateChange: true)
     sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
