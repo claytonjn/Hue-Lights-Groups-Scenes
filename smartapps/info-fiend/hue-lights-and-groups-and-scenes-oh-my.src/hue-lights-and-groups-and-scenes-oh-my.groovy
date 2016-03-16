@@ -1053,16 +1053,16 @@ def setGroupColor(childDevice, huesettings) {
 	put("lights/${getId(childDevice)}/state", value)
 }
 
-def setColorTemperature(childDevice, huesettings, transitiontime) {
+def setColorTemperature(childDevice, huesettings, transitionTime) {
 	log.debug "Executing 'setColorTemperature($huesettings)'"
-	def value = [ct: huesettings, transitiontime: transitiontime * 10]
+	def value = [ct: kelvinToMireks(huesettings), transitiontime: transitionTime * 10]
 	log.trace "sending command $value"
 	put("lights/${getId(childDevice)}/state", value)
 }
 
-def setGroupColorTemperature(childDevice, huesettings, transitiontime) {
+def setGroupColorTemperature(childDevice, huesettings, transitionTime) {
 	log.debug "Executing 'setColorTemperature($huesettings)'"
-	def value = [ct: huesettings, transitiontime: transitiontime * 10]
+	def value = [ct: kelvinToMireks(huesettings), transitiontime: transitionTime * 10]
 	log.trace "sending command $value"
 	put("groups/${getId(childDevice)}/action", value)
 }
@@ -1416,4 +1416,4 @@ def getSelectedTransition() {
 
 int kelvinToMireks(kelvin) {
 	return 1000000 / kelvin //https://en.wikipedia.org/wiki/Mired
-}
+}	
