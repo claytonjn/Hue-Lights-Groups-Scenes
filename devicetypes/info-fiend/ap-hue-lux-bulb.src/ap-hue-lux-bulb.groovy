@@ -43,13 +43,6 @@ metadata {
 			}
         }
 
-		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-			state "on", label:'${name}', action:"switch.off", icon:"st.lights.philips.hue-single", backgroundColor:"#79b821", nextState:"turningOff"
-			state "off", label:'${name}', action:"switch.on", icon:"st.lights.philips.hue-single", backgroundColor:"#ffffff", nextState:"turningOn"
-			state "turningOn", label:'${name}', action:"switch.off", icon:"st.lights.philips.hue-single", backgroundColor:"#79b821", nextState:"turningOff"
-			state "turningOff", label:'${name}', action:"switch.on", icon:"st.lights.philips.hue-single", backgroundColor:"#ffffff", nextState:"turningOn"
-        }
-
         controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false, range:"(0..100)") {
             state "level", action:"switch level.setLevel"
         }
@@ -65,7 +58,7 @@ metadata {
             state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
-        main(["switch"])
+        main(["rich-control"])
         details(["rich-control", "transitiontime", "valueTT", "refresh"])
     }
 
@@ -91,6 +84,11 @@ def parse(description) {
 }
 
 // handle commands
+void setTT(transitiontime) {
+	log.debug "Executing 'setTT': transition time is now ${transitiontime}."
+	sendEvent(name: "transTime", value: transitiontime, isStateChange: true)
+}
+
 void on() {
 	def level = device.currentValue("level")
     if(level == null) {
@@ -99,7 +97,7 @@ void on() {
     
 	def transitionTime = device.currentValue("transTime")
     if(transitionTime == null) {
-    	transitionTime = 3
+    	transitionTime = parent.getSelectedTransition()
     }
 	parent.on(this, transitionTime, level)
 	sendEvent(name: "switch", value: "on")
@@ -119,7 +117,7 @@ void on(transitiontime){
 void off() {
 	def transitionTime = device.currentValue("transTime")
     if(transitionTime == null) {
-    	transitionTime = 3
+    	transitionTime = parent.getSelectedTransition()
     }
     
 	parent.off(this, transitionTime)
@@ -133,19 +131,10 @@ void off(transitiontime) {
 	sendEvent(name: "transTime", value: transitionTime, isStateChange: true)
 }
 
-void setTT(transitiontime) {
-	log.debug "Executing 'setTT': transition time is now ${transitiontime}."
-	sendEvent(name: "transTime", value: transitiontime, isStateChange: true)
-}
-
-def poll() {
-	parent.poll()
-}
-
-def setLevel(percent) {
+void setLevel(percent) {
 	def transitionTime = device.currentValue("transTime")
     if(transitionTime == null) {
-    	transitionTime = 3
+    	transitionTime = parent.getSelectedTransition()
     }
     
     if(device.latestValue("level") as Integer == 0) (
@@ -159,7 +148,8 @@ def setLevel(percent) {
     sendEvent(name: "switch", value: "on", isStateChange: true)
 
 }
-def setLevel(percent, transitiontime) {
+
+void setLevel(percent, transitiontime) {
 	log.debug "Executing 'setLevel'"
 	parent.setLevel(this, percent, transitiontime)
 	sendEvent(name: "level", value: percent)
@@ -167,13 +157,17 @@ def setLevel(percent, transitiontime) {
     sendEvent(name: "switch", value: "on", isStateChange: true)
 }
 
-def save() {
-	log.debug "Executing 'save'"
-}
-
-def refresh() {
+void refresh() {
 	log.debug "Executing 'refresh'"
 	parent.poll()
+}
+
+def poll() {
+	parent.poll()
+}
+
+def save() {
+	log.debug "Executing 'save'"
 }
 
 def log(message, level = "trace") {
