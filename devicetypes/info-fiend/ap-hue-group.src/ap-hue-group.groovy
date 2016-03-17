@@ -110,9 +110,9 @@ def parse(description) {
 }
 
 // handle commands
-void setTransitionTime(transitiontime) {
-	log.debug "Executing 'setTransitionTime': transition time is now ${transitiontime}."
-	sendEvent(name: "transitionTime", value: transitiontime, isStateChange: true)
+void setTransitionTime(transitionTime) {
+	log.debug "Executing 'setTransitionTime': transition time is now ${transitionTime}."
+	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
 
 void on(transitionTime = device.currentValue("transitionTime")) {
