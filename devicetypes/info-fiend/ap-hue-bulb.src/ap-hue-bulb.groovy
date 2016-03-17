@@ -196,8 +196,7 @@ void setColor(value) {
 
 void reset() {
 	log.debug "Executing 'reset'"
-    def value = [level:100, hex:"#90C638", saturation:56, hue:23]
-    setAdjustedColor(value)
+    setColorTemperature(2710)
 	parent.poll()
 }
 
