@@ -784,11 +784,16 @@ def parse(childDevice, description) {
 	def parsedEvent = parseEventMessage(description)
 
 	if (parsedEvent.headers && parsedEvent.body) {
-		def headerString = new String(parsedEvent.headers.decodeBase64())
-		def bodyString = new String(parsedEvent.body.decodeBase64())
-		log.debug "parse() - ${bodyString}"
-		def body = new groovy.json.JsonSlurper().parseText(bodyString)
-		log.debug "BODY - $body"
+		def headerString = parsedEvent.headers.toString()
+        def bodyString = parsedEvent.body.toString()
+		if (headerString?.contains("json")) {
+			def body
+            try {
+                body = new groovy.json.JsonSlurper().parseText(bodyString)
+            } catch (all) {
+                log.warn "Parsing Body failed - trying again..."
+                poll()
+            }
 		if (body instanceof java.util.HashMap)
 		{ //poll response
 			def bulbs = getChildDevices()
@@ -906,13 +911,13 @@ def parse(childDevice, description) {
 			}
 
 			hsl.each { childDeviceNetworkId, hueSat ->
-				if (hueSat.hue && hueSat.saturation) {
-					def hex = colorUtil.hslToHex(hueSat.hue, hueSat.saturation)
-					log.debug "sending ${hueSat} for ${childDeviceNetworkId} as ${hex}"
-					sendEvent(hsl.childDeviceNetworkId, [name: "color", value: hex])
+                    if (hueSat.hue && hueSat.saturation) {
+                        def hex = colorUtil.hslToHex(hueSat.hue, hueSat.saturation)
+                        log.debug "sending ${hueSat} for ${childDeviceNetworkId} as ${hex}"
+                        sendEvent(hsl.childDeviceNetworkId, [name: "color", value: hex])
+					}
 				}
 			}
-
 		}
 	} else {
 		log.debug "parse - got something other than headers,body..."
@@ -921,105 +926,59 @@ def parse(childDevice, description) {
 }
 
 
-def on(childDevice, transitiontime, percent) {
-	def level = Math.min(Math.round(percent * 255 / 100), 255)
+def on(childDevice, transitiontime, percent, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
+    def level = Math.min(Math.round(percent * 255 / 100), 255)
 	def value = [on: true, bri: level]
     value.transitiontime = transitiontime * 10
 	log.debug "Executing 'on'"
-	put("lights/${getId(childDevice)}/state", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
-def groupOn(childDevice, transitiontime, percent) {
-	def level = Math.min(Math.round(percent * 255 / 100), 255)
-	def value = [on: true, bri: level]
-	value.transitiontime = transitiontime * 10
-	log.debug "Executing 'groupOn'"
-	put("groups/${getId(childDevice)}/action", value)
-}
-
-def off(childDevice, transitiontime) {
+def off(childDevice, transitiontime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	def value = [on: false]
     value.transitiontime = transitiontime * 10
 	log.debug "Executing 'off'"
-	put("lights/${getId(childDevice)}/state", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
-def groupOff(childDevice, transitiontime) {
-	log.debug "Executing 'groupOff'"
-    def value = [on: false]
-	value.transitiontime = transitiontime * 10
-	put("groups/${getId(childDevice)}/action", value)
-}
-
-
-def setLevel(childDevice, percent, transitiontime) {
+def setLevel(childDevice, percent, transitiontime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	log.debug "Executing 'setLevel'"
 	def level = Math.min(Math.round(percent * 255 / 100), 255)
 	def value = [bri: level, on: percent > 0, transitiontime: transitiontime * 10]
-	put("lights/${getId(childDevice)}/state", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
-def setGroupLevel(childDevice, percent, transitiontime) {
-	log.debug "Executing 'setGroupLevel'"
-	def level = Math.min(Math.round(percent * 255 / 100), 255)
-	def value = [bri: level, on: percent > 0, transitiontime: transitiontime * 10]
-	put("groups/${getId(childDevice)}/action", value)
-}
-
-def setSaturation(childDevice, percent, transitiontime) {
+def setSaturation(childDevice, percent, transitiontime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	log.debug "Executing 'setSaturation($percent)'"
 	def level = Math.min(Math.round(percent * 255 / 100), 255)
-	put("lights/${getId(childDevice)}/state", [sat: level, transitiontime: transitiontime * 10])
+	put("${deviceType}/${getId(childDevice)}/${api}", [sat: level, transitiontime: transitiontime * 10])
 }
 
-def setGroupSaturation(childDevice, percent, transitiontime) {
-	log.debug "Executing 'setGroupSaturation($percent)'"
-	def level = Math.min(Math.round(percent * 255 / 100), 255)
-	put("groups/${getId(childDevice)}/action", [sat: level, transitiontime: transitiontime * 10])
-}
-
-def setHue(childDevice, percent, transitiontime) {
+def setHue(childDevice, percent, transitiontime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	log.debug "Executing 'setHue($percent)'"
 	def level =	Math.min(Math.round(percent * 65535 / 100), 65535)
-	put("lights/${getId(childDevice)}/state", [hue: level, transitiontime: transitiontime * 10])
+	put("${deviceType}/${getId(childDevice)}/${api}", [hue: level, transitiontime: transitiontime * 10])
 }
 
-def setGroupHue(childDevice, percent, transitiontime) {
-	log.debug "Executing 'setGroupHue($percent)'"
-	def level =	Math.min(Math.round(percent * 65535 / 100), 65535)
-	put("groups/${getId(childDevice)}/action", [hue: level, transitiontime: transitiontime * 10])
-}
-
-def setColor(childDevice, huesettings) {
-	log.debug "Executing 'setColor($huesettings)'"
-	def hue = null
-	def sat = null
-	def xy = null
-	if (huesettings.hex) {
-		xy = getHextoXY(huesettings.hex)
-	} else if (huesettings.hue && huesettings.saturation) {
-		hue = Math.min(Math.round(huesettings.hue * 65535 / 100), 65535)
-		sat = Math.min(Math.round(huesettings.saturation * 255 / 100), 255)
-	}
-	def alert = huesettings.alert ? huesettings.alert : "none"
-	def transition = huesettings.transition ? huesettings.transition : settings.selectedTransition
-
-	def value = [xy: xy, sat: sat, hue: hue, alert: alert, transitiontime: transition, on: true]
-	
-	if (huesettings.level != null) {
-		if (huesettings.level == 1) value.bri = 1 else value.bri = Math.min(Math.round(huesettings.level * 255 / 100), 255)
-		value.on = value.bri > 0
-	}
-
-	if (huesettings.transitiontime != null){
-		value.transitiontime = huesettings.transitiontime * 10
-	}
-
-	log.debug "sending command $value"
-	put("lights/${getId(childDevice)}/state", value)
-}
-
-def setGroupColor(childDevice, huesettings) {
+def setColor(childDevice, huesettings, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	childDevice?.log "Executing 'setColor($huesettings)'"
 	def hue = null
 	def sat = null
@@ -1045,21 +1004,17 @@ def setGroupColor(childDevice, huesettings) {
 	}
 
 	childDevice?.log "sending command $value"
-	put("lights/${getId(childDevice)}/state", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
-def setColorTemperature(childDevice, huesettings, transitiontime) {
+def setColorTemperature(childDevice, huesettings, transitionTime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	log.debug "Executing 'setColorTemperature($huesettings)'"
-	def value = [ct: huesettings, transitiontime: transitiontime * 10]
+	def value = [ct: kelvinToMireks(huesettings), transitiontime: transitionTime * 10]
 	log.trace "sending command $value"
-	put("lights/${getId(childDevice)}/state", value)
-}
-
-def setGroupColorTemperature(childDevice, huesettings, transitiontime) {
-	log.debug "Executing 'setColorTemperature($huesettings)'"
-	def value = [ct: huesettings, transitiontime: transitiontime * 10]
-	log.trace "sending command $value"
-	put("groups/${getId(childDevice)}/action", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
 def setGroupScene(childDevice, Number inGroupID) {
