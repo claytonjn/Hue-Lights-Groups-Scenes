@@ -18,19 +18,19 @@ metadata {
 		capability "Polling"
 		capability "Refresh"
 		capability "Sensor"
-		//capability "Test Capability" //Hope to replace with Transistion Time
 
 		command "setAdjustedColor"
 		command "reset"        
         command "refresh"
 		command "setColorTemperature"
         command "setTransitionTime"
-        command "getGroupID"
+        command "colorloopOn"
+        command "colorloopOff"
 		command "log", ["string","string"]        
         
         attribute "transitionTime", "NUMBER"
         attribute "colorTemperature", "NUMBER"
-		attribute "groupID", "STRING"
+		attribute "effect", "enum", ["none", "colorloop"]
 	}
 
 	simulator {
@@ -56,12 +56,12 @@ metadata {
 			}
 		}
 
-	        controlTile("colorTempSliderControl", "device.colorTemperature", "slider", width: 5, height: 1, inactiveLabel: false, range:"(2000..6500)") {
-	            state "colorTemperature", action:"color temperature.setColorTemperature"
-	        }
-	        valueTile("colorTemp", "device.colorTemperature", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
-	            state "colorTemperature", label: '${currentValue} K'
-	        }
+        controlTile("colorTempSliderControl", "device.colorTemperature", "slider", width: 5, height: 1, inactiveLabel: false, range:"(2000..6500)") {
+            state "colorTemperature", action:"color temperature.setColorTemperature"
+        }
+        valueTile("colorTemp", "device.colorTemperature", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
+            state "colorTemperature", label: '${currentValue} K'
+        }
 		standardTile("reset", "device.reset", height: 2, width: 2, inactiveLabel: false, decoration: "flat") {
 			state "default", label:"Reset Color", action:"reset", icon:"st.lights.philips.hue-single"
 		}
@@ -74,19 +74,17 @@ metadata {
 		}
 		valueTile("transTime", "device.transitionTime", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
 			state "transitionTime", label: 'Transition    Time: ${currentValue}'
-        	}
+        }
 
-		valueTile("groupID", "device.groupID", inactiveLabel: false, decoration: "flat") {
-			state "groupID", label: 'groupID ${currentValue}   '
+		standardTile("toggleColorloop", "device.effect", height: 2, width: 2, inactiveLabel: false, decoration: "flat") {
+			state "colorloop", label:"On", action:"colorloopOff", nextState: "updating", icon:"https://raw.githubusercontent.com/claytonjn/Hue-Lights-Groups-Scenes/patch-5/smartapp-icons/hue/png/colorloop-on.png"
+            state "none", label:"Off", action:"colorloopOn", nextState: "updating", icon:"https://raw.githubusercontent.com/claytonjn/Hue-Lights-Groups-Scenes/patch-5/smartapp-icons/hue/png/colorloop-off.png"
+            state "updating", label:"Working", icon: "st.secondary.secondary"
 		}
-		standardTile("getGroupID", "device.getGroupID", inactiveLabel: false, decoration: "flat", defaultState: "Ready") {
-       			state "Normal", label: 'Get groupID', action:"switch groupID.getGroupID", backgroundColor:"#BDE5F2", nextState: "Retrieving"
-	    		state "Retrieving", label: 'Retrieving', backgroundColor: "#ffffff", nextState: "Normal"
-    		}
 
 	}
 	main(["rich-control"])
-	details(["rich-control", "colorTempSliderControl", "colorTemp", "transitionTimeSliderControl", "transTime", "refresh", "reset", "groupID", "getGroupID"])
+	details(["rich-control", "colorTempSliderControl", "colorTemp", "transitionTimeSliderControl", "transTime", "toggleColorloop", "refresh", "reset"])
 
 }
 
@@ -224,6 +222,18 @@ void setColorTemperature(colorTkelvin, transitionTime = device.currentValue("tra
     sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
 }
 
+void colorloopOn() {   
+    log.debug "Executing 'colorloopOn'"
+    parent.setEffect(this, "colorloop", "groups")
+    sendEvent(name: "effect", value: "colorloop", isStateChange: true)
+}
+
+void colorloopOff() {
+    log.debug "Executing 'colorloopOff'"
+    parent.setEffect(this, "none", "groups")
+    sendEvent(name: "effect", value: "none", isStateChange: true)
+}
+
 void refresh() {
 	log.debug "Executing 'refresh'"
 	parent.poll()    
@@ -244,16 +254,6 @@ def adjustOutgoingHue(percent) {
 	}
 	log.info "adjustOutgoingHue: $percent, adjusted: $adjusted"
 	adjusted
-}
-
-
-void getGroupID() {
-    log.debug "(this) means ${this} "
-    
-	def groupIDfromP = parent.getId(this)
-    log.debug "Retrieved groupID: ${groupIDfromP}."
-   
-    sendEvent(name: "groupID", value: "${groupIDfromP}", isStateChange: true)
 }
 
 def log(message, level = "trace") {

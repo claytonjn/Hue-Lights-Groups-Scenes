@@ -20,17 +20,19 @@ metadata {
 		capability "Polling"
 		capability "Refresh"
 		capability "Sensor"
-    //    capability "transitiontime" //Hope to replace with Transistion Time
 
 		command "setAdjustedColor"
         command "reset"        
         command "refresh"  
         command "setColorTemperature"
         command "setTransitionTime"
+        command "colorloopOn"
+        command "colorloopOff"
 		command "log", ["string","string"]        
         
         attribute "transitionTime", "NUMBER"
         attribute "colorTemperature", "NUMBER"
+        attribute "effect", "enum", ["none", "colorloop"]
         
 	}
 
@@ -76,11 +78,17 @@ metadata {
 		valueTile("transTime", "device.transitionTime", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
 			state "transitionTime", label: 'Transition    Time: ${currentValue}'
 	    }
+        
+        standardTile("toggleColorloop", "device.effect", height: 2, width: 2, inactiveLabel: false, decoration: "flat") {
+			state "colorloop", label:"On", action:"colorloopOff", nextState: "updating", icon:"https://raw.githubusercontent.com/claytonjn/Hue-Lights-Groups-Scenes/patch-5/smartapp-icons/hue/png/colorloop-on.png"
+            state "none", label:"Off", action:"colorloopOn", nextState: "updating", icon:"https://raw.githubusercontent.com/claytonjn/Hue-Lights-Groups-Scenes/patch-5/smartapp-icons/hue/png/colorloop-off.png"
+            state "updating", label:"Working", icon: "st.secondary.secondary"
+		}
 
 	}
 
 	main(["rich-control"])
-	details(["rich-control", "colorTempSliderControl", "colorTemp", "transitionTimeSliderControl", "transTime", "refresh", "reset"])
+	details(["rich-control", "colorTempSliderControl", "colorTemp", "transitionTimeSliderControl", "transTime", "toggleColorloop", "refresh", "reset"])
 }
 
 
@@ -218,6 +226,18 @@ void setColorTemperature(colorTkelvin, transitionTime = device.currentValue("tra
 	parent.setColorTemperature(this, colorTkelvin, transitionTime)
 	sendEvent(name: "colorTemperature", value: colorTkelvin, isStateChange: true)
   	sendEvent(name: "transitionTime", value: transitionTime, isStateChange: true)
+}
+
+void colorloopOn() {   
+    log.debug "Executing 'colorloopOn'"
+    parent.setEffect(this, "colorloop")
+    sendEvent(name: "effect", value: "colorloop", isStateChange: true)
+}
+
+void colorloopOff() {
+    log.debug "Executing 'colorloopOff'"
+    parent.setEffect(this, "none")
+    sendEvent(name: "effect", value: "none", isStateChange: true)
 }
 
 void refresh() {

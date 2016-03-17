@@ -817,8 +817,12 @@ def parse(childDevice, description) {
 		                                sendEvent(d.deviceNetworkId, [name: "color", value: hex])
                                         sendEvent(d.deviceNetworkId, [name: "hue", value: hue])
                                         sendEvent(d.deviceNetworkId, [name: "saturation", value: sat])
-                                        
 		                            }
+                                    if (bulb.value.state.ct) {
+                                    	def ct = mireksToKelvin(bulbe.value.state.ct) as int
+                                        sendEvent(d.deviceNetworkId, [name: "colorTemperature", value: ct])
+                                    }
+                                    if (bulb.value.state.effect) { sendEvent(d.deviceNetworkId, [name: "effect", value: bulb.value.state.effect]) }
 		                        } else {
 		                            sendEvent(d.deviceNetworkId, [name: "switch", value: "off"])
 		                            sendEvent(d.deviceNetworkId, [name: "level", value: 100])                     
@@ -829,7 +833,12 @@ def parse(childDevice, description) {
                                         sendEvent(d.deviceNetworkId, [name: "color", value: hex])
                                         sendEvent(d.deviceNetworkId, [name: "hue", value: hue])
                                         sendEvent(d.deviceNetworkId, [name: "saturation", value: sat])
-		                            }    
+		                            }
+                                    if (bulb.value.state.ct) {
+                                    	def ct = 2710
+                                        sendEvent(d.deviceNetworkId, [name: "colorTemperature", value: ct])
+                                    }
+                                    if (bulb.value.state.effect) { sendEvent(d.deviceNetworkId, [name: "effect", value: bulb.value.state.effect]) }
 		                     }
 		                 }
 	                 }
@@ -856,6 +865,11 @@ def parse(childDevice, description) {
                             sendEvent(d.deviceNetworkId, [name: "hue", value: hue])
                             sendEvent(d.deviceNetworkId, [name: "saturation", value: sat])
                         }
+                        if (bulb.value.state.ct) {
+                             def ct = mireksToKelvin(bulbe.value.state.ct) as int
+                             sendEvent(d.deviceNetworkId, [name: "colorTemperature", value: ct])
+                         }
+                        if (bulb.value.state.effect) { sendEvent(d.deviceNetworkId, [name: "effect", value: bulb.value.state.effect]) }
                     }
 	                        
                 }
@@ -899,6 +913,12 @@ def parse(childDevice, description) {
 							case "hue":
 								hsl[childDeviceNetworkId].hue = Math.min(Math.round(v * 100 / 65535), 65535) as int
 								break
+                            case "ct":
+                            	sendEvent(chileDeviceNetworkId, [name: "colorTemperature", value: mireksToKelvin(v)])
+                                break
+                            case "effect":
+                            	sendEvent(chileDeviceNetworkId, [name: "effect", value: v])
+                                break
 						}
 					}
 
@@ -1150,6 +1170,15 @@ def deleteScene(childDevice) {
 	delete("${path}")
 }
 
+def setEffect(childDevice, effect, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
+	def value = [effect: effect]
+	childDevice?.log "setEffect: Effect ${effect}."
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
+}
+
 private poll() {
 	def uri = "/api/${state.username}/lights/"
 	log.debug "GET:  $uri"
@@ -1366,4 +1395,8 @@ def getSelectedTransition() {
 
 int kelvinToMireks(kelvin) {
 	return 1000000 / kelvin //https://en.wikipedia.org/wiki/Mired
+}
+
+int mireksToKelvin(mireks) {
+	return 1000000 / mireks //https://en.wikipedia.org/wiki/Mired
 }
