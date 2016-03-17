@@ -927,40 +927,58 @@ def parse(childDevice, description) {
 
 
 def on(childDevice, transitiontime, percent, deviceType = "lights") {
-	def level = Math.min(Math.round(percent * 255 / 100), 255)
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
+    def level = Math.min(Math.round(percent * 255 / 100), 255)
 	def value = [on: true, bri: level]
     value.transitiontime = transitiontime * 10
 	log.debug "Executing 'on'"
-	put(deviceType+"/${getId(childDevice)}/state", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
 def off(childDevice, transitiontime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	def value = [on: false]
     value.transitiontime = transitiontime * 10
 	log.debug "Executing 'off'"
-	put(deviceType+"/${getId(childDevice)}/state", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
 def setLevel(childDevice, percent, transitiontime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	log.debug "Executing 'setLevel'"
 	def level = Math.min(Math.round(percent * 255 / 100), 255)
 	def value = [bri: level, on: percent > 0, transitiontime: transitiontime * 10]
-	put(deviceType+"/${getId(childDevice)}/state", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
 def setSaturation(childDevice, percent, transitiontime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	log.debug "Executing 'setSaturation($percent)'"
 	def level = Math.min(Math.round(percent * 255 / 100), 255)
-	put(deviceType+"/${getId(childDevice)}/state", [sat: level, transitiontime: transitiontime * 10])
+	put("${deviceType}/${getId(childDevice)}/${api}", [sat: level, transitiontime: transitiontime * 10])
 }
 
 def setHue(childDevice, percent, transitiontime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	log.debug "Executing 'setHue($percent)'"
 	def level =	Math.min(Math.round(percent * 65535 / 100), 65535)
-	put(deviceType+"/${getId(childDevice)}/state", [hue: level, transitiontime: transitiontime * 10])
+	put("${deviceType}/${getId(childDevice)}/${api}", [hue: level, transitiontime: transitiontime * 10])
 }
 
 def setColor(childDevice, huesettings, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	childDevice?.log "Executing 'setColor($huesettings)'"
 	def hue = null
 	def sat = null
@@ -986,14 +1004,17 @@ def setColor(childDevice, huesettings, deviceType = "lights") {
 	}
 
 	childDevice?.log "sending command $value"
-	put(deviceType+"/${getId(childDevice)}/state", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
 def setColorTemperature(childDevice, huesettings, transitionTime, deviceType = "lights") {
+	def api = "state" //lights
+    if(deviceType == "groups") { api = "action" }
+    
 	log.debug "Executing 'setColorTemperature($huesettings)'"
 	def value = [ct: kelvinToMireks(huesettings), transitiontime: transitionTime * 10]
 	log.trace "sending command $value"
-	put(deviceType+"/${getId(childDevice)}/state", value)
+	put("${deviceType}/${getId(childDevice)}/${api}", value)
 }
 
 def setGroupScene(childDevice, Number inGroupID) {
