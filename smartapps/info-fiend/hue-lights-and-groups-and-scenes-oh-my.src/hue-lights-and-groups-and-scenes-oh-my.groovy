@@ -25,7 +25,23 @@ preferences {
 	page(name:"bulbDiscovery", title:"Bulb Discovery", content:"bulbDiscovery", refreshTimeout:5)
 	page(name:"groupDiscovery", title:"Group Discovery", content:"groupDiscovery", refreshTimeout:5)        
 	page(name:"sceneDiscovery", title:"Scene Discovery", content:"sceneDiscovery", refreshTimeout:5)
-    page(name:"defaultTransition", title:"Default Transition", content:"defaultTransition", refreshTimeout:5)
+    page(name:"advancedSettings", title:"Advanced Settings", nextPage:"", install:true, uninstall: true) {
+		section("Default Transition") {
+			paragraph "Choose how long bulbs should take to transition between on/off and color changes. This can be modified per-device."
+            input "selectedTransition", "number", required:true, title:"Transition Time (seconds)", value: 1
+		}
+        section("Circadian Daylight Integration") {
+        	paragraph "Add toggles to each device page, allowing you to enable/disable automatic color changes and dynamic brightness per-device, on the fly."
+            href(	name:			"circadianDaylightLink",
+            		title:			"More Info",
+                    required:		false,
+                    style:			"embedded", //TODO: change to "external" when that works on Android
+                    url:			"https://community.smartthings.com/t/circadian-daylight-smartthings-philips-hue/13623",
+                    description:	"Tap to view more information about the Circadian Daylight SmartApp.",
+                    image:			"https://s3.amazonaws.com/smartapp-icons/MiscHacking/mindcontrol.png"	)
+			input(name: "circadianDaylightIntegration", type: "bool", title: "Circadian Daylight Integration", defaultValue: false)
+        }
+	}
 }
 
 def mainPage() {
@@ -175,7 +191,7 @@ def sceneDiscovery()
         log.debug "END HUE SCENE DISCOVERY"
 	}
 
-	return dynamicPage(name:"sceneDiscovery", title:"Scene Discovery Started!", nextPage:"defaultTransition", refreshInterval:refreshInterval, uninstall: true) {
+	return dynamicPage(name:"sceneDiscovery", title:"Scene Discovery Started!", nextPage:"advancedSettings", refreshInterval:refreshInterval, uninstall: true) {
 		section("Please wait while we discover your Hue Scenes. Discovery can take a few minutes, so sit back and relax! Select your device below once discovered.") {
 			input "selectedScenes", "enum", required:false, title:"Select Hue Scenes (${numFoundScenes} found)", multiple:true, options:optionsScenes
 		}
@@ -183,19 +199,6 @@ def sceneDiscovery()
 			def title = bridgeDni ? "Hue bridge (${bridgeHostname})" : "Find bridges"
 			href "bridgeDiscovery", title: title, description: "", state: selectedHue ? "complete" : "incomplete", params: [override: true]
 
-		}
-	}
-}
-
-def defaultTransition()
-{
-	int sceneRefreshCount = !state.sceneRefreshCount ? 0 : state.sceneRefreshCount as int
-	state.sceneRefreshCount = sceneRefreshCount + 1
-	def refreshInterval = 3
-
-	return dynamicPage(name:"defaultTransition", title:"Default Transition", nextPage:"", refreshInterval:refreshInterval, install:true, uninstall: true) {
-		section("Choose how long bulbs should take to transition between on/off and color changes. This can be modified per-device.") {
-			input "selectedTransition", "number", required:true, title:"Transition Time (seconds)", value: 1
 		}
 	}
 }
@@ -1362,6 +1365,9 @@ def ipAddressFromDni(dni) {
 
 def getSelectedTransition() {
 	return settings.selectedTransition
+	
+def getCDIntegration() {
+	return settings.circadianDaylightIntegration
 }
 
 int kelvinToMireks(kelvin) {
